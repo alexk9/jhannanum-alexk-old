@@ -30,6 +30,11 @@ public class ProbabilityDBM {
 	/** hash table */
 	private Hashtable<String,double[]> table = null;
 	
+	
+	public Hashtable<String, double[]> getTable() {
+		return table;
+	}
+
 	/**
 	 * Constructor.
 	 * @param fileName - the name of the file which has statistic data

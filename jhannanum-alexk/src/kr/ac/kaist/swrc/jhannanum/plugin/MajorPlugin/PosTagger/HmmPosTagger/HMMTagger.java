@@ -17,6 +17,11 @@ along with JHanNanum.  If not, see <http://www.gnu.org/licenses/>   */
 
 package kr.ac.kaist.swrc.jhannanum.plugin.MajorPlugin.PosTagger.HmmPosTagger;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -114,6 +119,10 @@ public class HMMTagger implements PosTagger {
 	/** lambda 2 */
 	final static private double Lambda2 = 1.0 - LAMBDA;
 	
+	Connection conn_pwt_pos = null;
+	Connection conn_ptt_pos = null;
+	Connection conn_ptt_wp = null;
+	
 	@Override
 	public Sentence tagPOS(SetOfSentences sos) {
 		int v = 0, prev_v = 0, w = 0;
@@ -157,6 +166,12 @@ public class HMMTagger implements PosTagger {
 
 	@Override
 	public void initialize(String baseDir, String configFile) throws Exception  {
+		Class.forName("org.sqlite.JDBC");
+	    conn_pwt_pos = DriverManager.getConnection("jdbc:sqlite:db/pwt_pos.db");
+	    conn_ptt_pos = DriverManager.getConnection("jdbc:sqlite:db/ptt_pos.db");
+	    conn_ptt_wp = DriverManager.getConnection("jdbc:sqlite:db/ptt_wp.db");
+		
+		
 		wp = new WPhead[5000];
 		for (int i = 0; i < 5000; i++) {
 			wp[i] = new WPhead();
@@ -177,6 +192,9 @@ public class HMMTagger implements PosTagger {
 		pwt_pos_tf = new ProbabilityDBM(PWT_POS_TDBM_FILE);
 		ptt_wp_tf = new ProbabilityDBM(PTT_WP_TDBM_FILE);
 		ptt_pos_tf = new ProbabilityDBM(PTT_POS_TDBM_FILE);
+		
+		
+		
 	}
 	
 	@Override
