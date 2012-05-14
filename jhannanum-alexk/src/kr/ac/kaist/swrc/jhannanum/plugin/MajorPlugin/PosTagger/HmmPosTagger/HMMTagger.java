@@ -49,7 +49,7 @@ public class HMMTagger implements PosTagger {
 		/** eojeol */
 		private Eojeol eojeol;
 		
-		/** 어절 태그 */
+		/** eojeol tag */
 		private String wp_tag;
 		
 		/** the probability of this node - P(T, W) */
@@ -58,7 +58,7 @@ public class HMMTagger implements PosTagger {
 		/** the accumulated probability from start to this node */
 		private double prob;
 		
-		/** back pointer for viterbi algorithm */
+		/** back pointer for 비터비 algorithm */
 		private int backptr;
 		
 		/** the index for the next sibling */
@@ -71,25 +71,23 @@ public class HMMTagger implements PosTagger {
 	 */
 	private class WPhead {
 		/** the index of the node for an eojeol */
-		private int iIdxOfNodeForEojeol;
+		private int mnode;
 	}
 	
 	/** log 0.01 - smoothing factor */
 	private static double SF = -4.60517018598809136803598290936873;
 	
-	/** the array of nodes for each eojeol 
-	 * 어절별로 유니크하게 하나의 값만 갖는다.
-	 */
-	private WPhead[] aEojeol = null;
+	/** the list of nodes for each eojeol */
+	private WPhead[] wp = null;
 	
 	/** the last index of eojeol list */
-	private int iLastIdxOfaEojeol = 0;
+	private int wp_end = 0;
 
 	/** the nodes for the markov model */
-	private MNode[] aNodeForMM = null;
+	private MNode[] mn = null;
 	
 	/** the last index of the markov model  */
-	private int iLastIdxOfMM = 0;
+	private int mn_end = 0;
 
 	/** for the probability P(W|T) */
 	private ProbabilityDBM pwt_pos_tf = null;
@@ -101,15 +99,12 @@ public class HMMTagger implements PosTagger {
 	private ProbabilityDBM ptt_wp_tf = null;
 
 	/** the statistic file for the probability P(T|W) for morphemes */
-	/** 형태소에 대한 P(T|W) 통계 파일 */
 	private String PWT_POS_TDBM_FILE;
 	
 	/** the statistic file for the probability P(T|T) for morphemes */
-	/** 형태소에 대한 P(T|T) 통계 파일 */
 	private String PTT_POS_TDBM_FILE;
 	
 	/** the statistic file for the probability P(T|T) for eojeols */
-	/** 어절에 대한 P(T|T) 통계 파일 */
 	private String PTT_WP_TDBM_FILE;
 
 	/** the default probability */
@@ -145,26 +140,21 @@ public class HMMTagger implements PosTagger {
 			} else {
 				break;
 			}
-			//새로운 어절 노드를 만든다.
 			w = new_wp(plainEojeol);
 			
-			//어절 셋에는 하나의 어절에 대하여 해석이 가능한 어절의 구분에 대한 분류가 들어간다.
-			//각각의 어절 분류에 대하여 compute_wt 메쏘드를 호출하여 확률을 구한다.
 			for (int i = 0; i < eojeolSet.length; i++) {
 				String now_tag;
 				double probability;
 	
-				//PhraseTag 메쏘드를 호출하여 어절에 대한 태깅을 한다.
-				//이는 형태소 태깅보다 좀더 상위 레벨의 태깅이다.
 				now_tag = PhraseTag.getPhraseTag(eojeolSet[i].getTags());
 				probability = compute_wt(eojeolSet[i]);
 				
 				v = new_mnode(eojeolSet[i], now_tag, probability);
 				if (i == 0) {
-					aEojeol[w].iIdxOfNodeForEojeol = v;
+					wp[w].mnode = v;
 					prev_v = v;
 				} else {
-					aNodeForMM[prev_v].sibling = v;
+					mn[prev_v].sibling = v;
 					prev_v = v;
 				}
 			}
@@ -182,17 +172,17 @@ public class HMMTagger implements PosTagger {
 	    conn_ptt_wp = DriverManager.getConnection("jdbc:sqlite:db/ptt_wp.db");
 		
 		
-		aEojeol = new WPhead[5000];
+		wp = new WPhead[5000];
 		for (int i = 0; i < 5000; i++) {
-			aEojeol[i] = new WPhead();
+			wp[i] = new WPhead();
 		}
-		iLastIdxOfaEojeol = 1;
+		wp_end = 1;
 
-		aNodeForMM = new MNode[10000];
+		mn = new MNode[10000];
 		for (int i = 0; i < 10000; i++) {
-			aNodeForMM[i] = new MNode();
+			mn[i] = new MNode();
 		}
-		iLastIdxOfMM = 1;
+		mn_end = 1;
 
 		JSONReader json = new JSONReader(configFile);
 		PWT_POS_TDBM_FILE = baseDir + "/" + json.getValue("pwt.pos");
@@ -214,8 +204,6 @@ public class HMMTagger implements PosTagger {
 
 	/**
 	 * Computes P(T_i, W_i) of the specified eojeol.
-	 * 하나의 어절에 대하여 태그 배열에 대한 발생 가능 확률을 구한다.
-	 * 첫 태그는 bnk-tag1 확률이고, 마지막 태그는 tagx-bnk 에 대한 확률이다.
 	 * @param eojeol - the eojeol to compute the probability
 	 * @return P(T_i, W_i) of the specified eojeol
 	 */
@@ -229,14 +217,11 @@ public class HMMTagger implements PosTagger {
 
 		tag = eojeol.getTag(0);
 
-		/* the probability of P(t1|t0)
-		 * 시작부는 반드시 bnk로 시작한다. bnk-xxx 는 P(xxx|bnk)를 의미한다. 
-		 */
+		/* the probability of P(t1|t0) */
 		bitag = "bnk-" + tag;
 
 		double[] prob = null;
-		//P(T0|T1)에 대한 확률을 구한다.
-		//확률값이 배열이지만, 실제로는 한개만 리턴 될 것이다.
+
 		if ((prob = ptt_pos_tf.get(bitag)) != null) {
 			/* current = P(t1|t0) */
 			tbigram = prob[0];
@@ -322,7 +307,6 @@ public class HMMTagger implements PosTagger {
 		}
 
 		/* the blank at the end of eojeol */
-		/* 끝부분은 반드시 bnk로 끝난다. */
 		bitag = tag + "-bnk";
 
 		/* P(bnk|t_last) */
@@ -357,12 +341,12 @@ public class HMMTagger implements PosTagger {
 
 		/* Ceartes the last node */
 		i = new_wp(" ");
-		aEojeol[i].iIdxOfNodeForEojeol = new_mnode(null, "SF", 0);
+		wp[i].mnode = new_mnode(null, "SF", 0);
 
 		/* Runs viterbi */
-		for (i = 1; i < iLastIdxOfaEojeol - 1; i++) {
-			for (j = aEojeol[i].iIdxOfNodeForEojeol; j != 0; j = aNodeForMM[j].sibling) { 
-				for (k = aEojeol[i+1].iIdxOfNodeForEojeol; k != 0; k = aNodeForMM[k].sibling) {
+		for (i = 1; i < wp_end - 1; i++) {
+			for (j = wp[i].mnode; j != 0; j = mn[j].sibling) { 
+				for (k = wp[i+1].mnode; k != 0; k = mn[k].sibling) {
 					update_prob_score(j, k);
 				}
 			}
@@ -370,8 +354,8 @@ public class HMMTagger implements PosTagger {
 
 		i = sos.length;
 		Eojeol[] eojeols = new Eojeol[i];
-		for (k = aEojeol[i].iIdxOfNodeForEojeol; k != 0; k = aNodeForMM[k].backptr) {
-			eojeols[--i] = aNodeForMM[k].eojeol;
+		for (k = wp[i].mnode; k != 0; k = mn[k].backptr) {
+			eojeols[--i] = mn[k].eojeol;
 		}
 
 		return new Sentence(sos.getDocumentID(), sos.getSentenceID(), sos.isEndOfDocument(), sos.getPlainEojeolArray().toArray(new String[0]), eojeols);
@@ -385,12 +369,12 @@ public class HMMTagger implements PosTagger {
 	 * @return the index of the new node
 	 */
 	private int new_mnode(Eojeol eojeol, String wp_tag, double prob) {
-		aNodeForMM[iLastIdxOfMM].eojeol = eojeol;
-		aNodeForMM[iLastIdxOfMM].wp_tag = wp_tag;
-		aNodeForMM[iLastIdxOfMM].prob_wt = prob;
-		aNodeForMM[iLastIdxOfMM].backptr = 0;
-		aNodeForMM[iLastIdxOfMM].sibling = 0;
-		return iLastIdxOfMM++;
+		mn[mn_end].eojeol = eojeol;
+		mn[mn_end].wp_tag = wp_tag;
+		mn[mn_end].prob_wt = prob;
+		mn[mn_end].backptr = 0;
+		mn[mn_end].sibling = 0;
+		return mn_end++;
 	}
 	
 	/**
@@ -399,16 +383,16 @@ public class HMMTagger implements PosTagger {
 	 * @return the index of the new header
 	 */
 	private int new_wp(String str) {
-		aEojeol[iLastIdxOfaEojeol].iIdxOfNodeForEojeol = 0;
-		return iLastIdxOfaEojeol++;
+		wp[wp_end].mnode = 0;
+		return wp_end++;
 	}
 
 	/**
 	 * Resets the model.
 	 */
 	private void reset() {
-		iLastIdxOfaEojeol = 1;
-		iLastIdxOfMM = 1;
+		wp_end = 1;
+		mn_end = 1;
 	}
 
 	/**
@@ -422,7 +406,7 @@ public class HMMTagger implements PosTagger {
 		double P;
 
 		/* the traisition probability P(T_i,T_i-1) */
-		prob = ptt_wp_tf.get(aNodeForMM[from].wp_tag + "-" +aNodeForMM[to].wp_tag);
+		prob = ptt_wp_tf.get(mn[from].wp_tag + "-" +mn[to].wp_tag);
 		
 		if (prob == null) {
 			/* ln(0.01). Smoothing Factor */
@@ -432,7 +416,7 @@ public class HMMTagger implements PosTagger {
 		}
 		
 		/* P(T_i,T_i-1) / P(T_i) */
-		prob = ptt_wp_tf.get(aNodeForMM[to].wp_tag);
+		prob = ptt_wp_tf.get(mn[to].wp_tag);
 		
 		if (prob != null) {
 			PTT -= prob[0];
@@ -445,8 +429,8 @@ public class HMMTagger implements PosTagger {
 //			PTT -= prob[0];
 //		}
 
-		if (aNodeForMM[from].backptr == 0) {
-			aNodeForMM[from].prob = aNodeForMM[from].prob_wt;
+		if (mn[from].backptr == 0) {
+			mn[from].prob = mn[from].prob_wt;
 		}
 
 		/* 
@@ -454,16 +438,16 @@ public class HMMTagger implements PosTagger {
 		 * PTT = P(T_i|T_i-1) / P(T_i)
 		 * mn[to].prob_wt = P(T_i, W_i)
  		 */
-		P = aNodeForMM[from].prob + PTT + aNodeForMM[to].prob_wt;
+		P = mn[from].prob + PTT + mn[to].prob_wt;
 
 		// for debugging
 //		System.out.format("P:%f\t%s(%d:%s):%f -> %f -> %s(%d:%s):%f\n", P, mn[from].eojeol, 
 //				from, mn[from].wp_tag, mn[from].prob, PTT, 
 //				mn[to].eojeol, to, mn[to].wp_tag, mn[to].prob_wt );
 	
-		if (aNodeForMM[to].backptr == 0 || P > aNodeForMM[to].prob) {
-			aNodeForMM[to].backptr = from;
-			aNodeForMM[to].prob = P; 
+		if (mn[to].backptr == 0 || P > mn[to].prob) {
+			mn[to].backptr = from;
+			mn[to].prob = P; 
 		}
 	}
 }

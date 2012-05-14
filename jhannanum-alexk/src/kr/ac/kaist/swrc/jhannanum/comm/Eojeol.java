@@ -70,7 +70,7 @@ public class Eojeol {
 	}
 	
 	/**
-	 * 주어진 인덱스에 대한 형태소를 리턴한다.
+	 * It returns the morpheme on the specific index.
 	 * @param index - index of morpheme
 	 * @return the morpheme on the index
 	 */
