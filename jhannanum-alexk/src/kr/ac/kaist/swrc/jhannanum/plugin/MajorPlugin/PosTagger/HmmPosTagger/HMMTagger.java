@@ -77,7 +77,9 @@ public class HMMTagger implements PosTagger {
 	/** log 0.01 - smoothing factor */
 	private static double SF = -4.60517018598809136803598290936873;
 	
-	/** the array of nodes for each eojeol */
+	/** the array of nodes for each eojeol 
+	 * 어절별로 유니크하게 하나의 값만 갖는다.
+	 */
 	private WPhead[] aEojeol = null;
 	
 	/** the last index of eojeol list */
@@ -143,12 +145,17 @@ public class HMMTagger implements PosTagger {
 			} else {
 				break;
 			}
+			//새로운 어절 노드를 만든다.
 			w = new_wp(plainEojeol);
 			
+			//어절 셋에는 하나의 어절에 대하여 해석이 가능한 어절의 구분에 대한 분류가 들어간다.
+			//각각의 어절 분류에 대하여 compute_wt 메쏘드를 호출하여 확률을 구한다.
 			for (int i = 0; i < eojeolSet.length; i++) {
 				String now_tag;
 				double probability;
 	
+				//PhraseTag 메쏘드를 호출하여 어절에 대한 태깅을 한다.
+				//이는 형태소 태깅보다 좀더 상위 레벨의 태깅이다.
 				now_tag = PhraseTag.getPhraseTag(eojeolSet[i].getTags());
 				probability = compute_wt(eojeolSet[i]);
 				
@@ -207,6 +214,8 @@ public class HMMTagger implements PosTagger {
 
 	/**
 	 * Computes P(T_i, W_i) of the specified eojeol.
+	 * 하나의 어절에 대하여 태그 배열에 대한 발생 가능 확률을 구한다.
+	 * 첫 태그는 bnk-tag1 확률이고, 마지막 태그는 tagx-bnk 에 대한 확률이다.
 	 * @param eojeol - the eojeol to compute the probability
 	 * @return P(T_i, W_i) of the specified eojeol
 	 */
@@ -226,7 +235,8 @@ public class HMMTagger implements PosTagger {
 		bitag = "bnk-" + tag;
 
 		double[] prob = null;
-
+		//P(T0|T1)에 대한 확률을 구한다.
+		//확률값이 배열이지만, 실제로는 한개만 리턴 될 것이다.
 		if ((prob = ptt_pos_tf.get(bitag)) != null) {
 			/* current = P(t1|t0) */
 			tbigram = prob[0];
