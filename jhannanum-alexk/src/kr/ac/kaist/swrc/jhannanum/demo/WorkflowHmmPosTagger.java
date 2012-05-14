@@ -41,21 +41,14 @@ public class WorkflowHmmPosTagger {
 		
 		try {
 			/* Activate the work flow in the thread mode */
-			workflow.activateWorkflow(true);
+			workflow.activateWorkflow(false);
 			
 			/* Analysis using the work flow */
-			String document = "프로젝트 전체 회의.\n"
-				+ "회의 일정은 다음과 같습니다.\n";
+			String document = "통합진보당은 14일 비례대표경선부정 파문을 수습하기 위해 강기갑 의원을 위원장으로 한 혁신비상대책위원회 체제로 전환하고 이석기 김재연 등 비례대표 당선자 사퇴를 의결했다.";
 			
 			workflow.analyze(document);
 			System.out.println(workflow.getResultOfDocument());
 			
-			/* Once a work flow is activated, it can be used repeatedly. */
-			document = "日時: 2010년 7월 30일 오후 1시\n"
-				+ "場所: Coex Conference Room\n";
-			
-			workflow.analyze(document);
-			System.out.println(workflow.getResultOfDocument());
 			
 			workflow.close();
 			
