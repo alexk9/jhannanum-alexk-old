@@ -339,8 +339,9 @@ public class HMMTagger implements PosTagger {
 
 	/**
 	 * Runs viterbi to get the final morphological analysis result which has the highest probability.
-	 * @param sos - all the candidates of morphological analysis
-	 * @return the final morphological analysis result which has the highest probability
+	 * 비터비 알고리즘을 통해서 최상의 확률을 갖는 형태소 분석 결과를 얻는다.
+	 * @param sos - 형태소 분석의 모든 후보 
+	 * @return 최상의 확률을 갖는 형태소 분석 결과
 	 */
 	private Sentence end_sentence(SetOfSentences sos) {
 		int i, j, k;

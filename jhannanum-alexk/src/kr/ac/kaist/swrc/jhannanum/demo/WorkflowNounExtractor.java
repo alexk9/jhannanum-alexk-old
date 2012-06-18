@@ -49,7 +49,7 @@ public class WorkflowNounExtractor {
 			workflow.activateWorkflow(false);
 			
 			/* Analysis using the work flow */
-			String document = "10일 정부가 발표한 '주택거래 정상화 및 서민ㆍ중산층 주거안정 지원 방안'에 대한 부동산시장과 전문가들의 반응은 한결같았다. 총부채상환비율(DTI) 완화와 취득ㆍ등록세 경감 등 특단의 대책이 빠졌기 때문에 거래 활성화는 기대하기 힘들다는 것이다. '스몰볼' 대책에 시장 역시 차갑게 반응하는 분위기다.";
+			String document = "지난 9일 오전 7시29분 서울역 승강장. 토요일 새벽 4시50분 부산역을 출발한 KTX 열차에서 책가방을 멘 젊은이들이 쏟아져 나왔다. 서울시 공무원 시험을 치르기 위해 지방에서 올라온 수험생들이다.";
 			workflow.analyze(document);
 			
 			LinkedList<Sentence> resultList = workflow.getResultOfDocument(new Sentence(0, 0, false));

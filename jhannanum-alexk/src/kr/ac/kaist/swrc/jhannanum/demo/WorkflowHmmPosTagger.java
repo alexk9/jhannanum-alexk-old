@@ -44,7 +44,7 @@ public class WorkflowHmmPosTagger {
 			workflow.activateWorkflow(false);
 			
 			/* Analysis using the work flow */
-			String document = "통합진보당은 14일 비례대표경선부정 파문을 수습하기 위해 강기갑 의원을 위원장으로 한 혁신비상대책위원회 체제로 전환하고 이석기 김재연 등 비례대표 당선자 사퇴를 의결했다.";
+			String document = "지난 9일 오전 7시29분 서울역 승강장. 토요일 새벽 4시50분 부산역을 출발한 KTX 열차에서 책가방을 멘 젊은이들이 쏟아져 나왔다. 서울시 공무원 시험을 치르기 위해 지방에서 올라온 수험생들이다.";
 			
 			workflow.analyze(document);
 			System.out.println(workflow.getResultOfDocument());
